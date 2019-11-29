@@ -23,6 +23,7 @@ type ConsultaResponse struct {
 	CFDIStatus         string   `xml:"ConsultaResult>Estado"`
 	CancellationStatus string   `xml:"ConsultaResult>EstatusCancelacion"`
 	IsCancellable      string   `xml:"ConsultaResult>EsCancelable"`
+	RawResponse        string
 }
 
 var r ConsultaResponse
@@ -64,7 +65,7 @@ func ValidateDocument(i InvoiceHeaders) (ConsultaResponse, error) {
 	if err != nil {
 		return r, fmt.Errorf(callError, err)
 	}
-
+	r.RawResponse = string(res.Body)
 	err = res.Unmarshal(&r)
 	if err != nil {
 		return r, fmt.Errorf("Error while unmarshalling response: %w", err)
