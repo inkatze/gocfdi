@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/tiaguinho/gosoap"
 )
 
@@ -42,8 +43,10 @@ var (
 func (i *InvoiceHeaders) SoapClient(url string) error {
 	client, err := gosoap.SoapClient(url)
 	if err != nil {
+		log.Errorf("Error while creating SOAP client for url: %s", url)
 		return fmt.Errorf("Error while creating a SOAP client for %s: %w", url, err)
 	}
+	log.Debugf("SOAP client successfully created")
 	i.Client = client
 	return nil
 }
