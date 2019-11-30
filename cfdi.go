@@ -15,10 +15,10 @@ const successMessage = "S - Comprobante obtenido satisfactoriamente."
 const invalidInvoice = "N - 601: La expresión impresa proporcionada no es válida."
 const invalidNotFound = "N - 602: Comprobante no encontrado"
 
-// DocumentHeaders values used to uniquely identify CFDI documents
-type DocumentHeaders struct {
+// DocumentHeader values used to uniquely identify CFDI documents
+type DocumentHeader struct {
 	IssuerRFC, AddresseeRFC, TotalAmount, InvoiceUUID string
-	Client                                            *gosoap.Client
+	client                                            *gosoap.Client
 }
 
 // ValidationResult contains the processed results from the validation response
@@ -39,19 +39,19 @@ var (
 	r ValidationResult
 )
 
-func (d *DocumentHeaders) soapClient(url string) error {
+func (d *DocumentHeader) soapClient(url string) error {
 	client, err := gosoap.SoapClient(url)
 	if err != nil {
 		log.Errorf("Error while creating SOAP client for url: %s", url)
 		return fmt.Errorf("Error while creating a SOAP client for %s: %w", url, err)
 	}
 	log.Debugf("SOAP client successfully created")
-	d.Client = client
+	d.client = client
 	return nil
 }
 
-func (d *DocumentHeaders) call() (*gosoap.Response, error) {
-	if d.Client == nil {
+func (d *DocumentHeader) call() (*gosoap.Response, error) {
+	if d.client == nil {
 		if err := d.soapClient(ValidationURL); err != nil {
 			return nil, err
 		}
@@ -63,15 +63,15 @@ func (d *DocumentHeaders) call() (*gosoap.Response, error) {
 	params := gosoap.Params{"expresionImpresa": parsedValues}
 
 	// Work around a bug that uses the wrong namespace
-	res, err := d.Client.Call("Consulta", params)
+	res, err := d.client.Call("Consulta", params)
 	callError := "Error while calling SOAP action: %w"
 	if err != nil {
 		return res, fmt.Errorf(callError, err)
 	}
-	d.Client.Definitions.Types[0].XsdSchema[0].TargetNamespace = "http://tempuri.org/"
+	d.client.Definitions.Types[0].XsdSchema[0].TargetNamespace = "http://tempuri.org/"
 
 	// Actual call
-	res, err = d.Client.Call("Consulta", params)
+	res, err = d.client.Call("Consulta", params)
 	if err != nil {
 		return res, fmt.Errorf(callError, err)
 	}
@@ -80,7 +80,7 @@ func (d *DocumentHeaders) call() (*gosoap.Response, error) {
 
 // Validate checks if the document with the given parameters exists in SAT's system and is valid.
 // BUG(inkatze): The namespace is not being parsed correctly in gosoap, so we have to make two calls to fix the element's namespace
-func (d *DocumentHeaders) Validate() (ValidationResult, error) {
+func (d *DocumentHeader) Validate() (ValidationResult, error) {
 	res, err := d.call()
 	if err != nil {
 		// Error

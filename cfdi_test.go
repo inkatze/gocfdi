@@ -5,7 +5,7 @@ import (
 )
 
 func TestValidation(t *testing.T) {
-	document := DocumentHeaders{
+	document := DocumentHeader{
 		IssuerRFC:    "LSO1306189R5",
 		AddresseeRFC: "GACJ940911ASA",
 		TotalAmount:  "4999.99",
