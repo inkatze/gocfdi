@@ -16,7 +16,7 @@ package main
 import (
 	"fmt"
 
-	cfdi "github.com/inkatze/gocfdi"
+	"github.com/inkatze/gocfdi"
 )
 
 func main() {
