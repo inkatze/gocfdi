@@ -39,8 +39,7 @@ var (
 	r ValidationResult
 )
 
-// SoapClient creates a new SOAP client for the given url.
-func (d *DocumentHeaders) SoapClient(url string) error {
+func (d *DocumentHeaders) soapClient(url string) error {
 	client, err := gosoap.SoapClient(url)
 	if err != nil {
 		log.Errorf("Error while creating SOAP client for url: %s", url)
@@ -53,7 +52,7 @@ func (d *DocumentHeaders) SoapClient(url string) error {
 
 func (d *DocumentHeaders) call() (*gosoap.Response, error) {
 	if d.Client == nil {
-		if err := d.SoapClient(ValidationURL); err != nil {
+		if err := d.soapClient(ValidationURL); err != nil {
 			return nil, err
 		}
 	}
