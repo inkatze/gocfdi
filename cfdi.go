@@ -79,7 +79,7 @@ func (d *DocumentHeaders) call() (*gosoap.Response, error) {
 }
 
 // Validate checks if the document with the given parameters exists in SAT's system and is valid.
-// BUG(inkatze): The namespace is not being parsed correctly in gosoap.
+// BUG(inkatze): The namespace is not being parsed correctly in gosoap, so we have to make two calls to fix the element's namespace
 func (d *DocumentHeaders) Validate() (ValidationResult, error) {
 	res, err := d.call()
 	if err != nil {
