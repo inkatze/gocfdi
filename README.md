@@ -1,4 +1,4 @@
-# gocfdi [![GoDoc](https://godoc.org/github.com/inkatze/gocfdi?status.png)](https://godoc.org/github.com/inkatze/gocfdi)
+# gocfdi [![Actions Status](https://github.com/inkatze/gocfdi/workflows/test/badge.svg)](https://github.com/{owner}/{repo}/actions) [![GoDoc](https://godoc.org/github.com/inkatze/gocfdi?status.png)](https://godoc.org/github.com/inkatze/gocfdi) [![Go Report Card](https://goreportcard.com/badge/github.com/inkatze/gocfdi)](https://goreportcard.com/report/github.com/inkatze/gocfdi) [![codecov](https://codecov.io/gh/inkatze/gocfdi/branch/master/graph/badge.svg)](https://codecov.io/gh/inkatze/gocfdi)
 
 Package to help validating CFDI invoices with the mexican Tax Administration System.
 

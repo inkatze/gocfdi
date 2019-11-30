@@ -5,7 +5,7 @@ on: pull_request
 jobs:
 
   test:
-    name: Test
+    name: test
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.13
