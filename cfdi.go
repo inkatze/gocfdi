@@ -8,9 +8,7 @@ import (
 	"github.com/tiaguinho/gosoap"
 )
 
-// ValidationURL for the SOAP service to validate CFDI documents
-const ValidationURL = "https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc?wsdl"
-
+const validationURL = "https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc?wsdl"
 const successMessage = "S - Comprobante obtenido satisfactoriamente."
 const invalidInvoice = "N - 601: La expresión impresa proporcionada no es válida."
 const invalidNotFound = "N - 602: Comprobante no encontrado"
@@ -52,7 +50,7 @@ func (d *DocumentHeader) soapClient(url string) error {
 
 func (d *DocumentHeader) call() (*gosoap.Response, error) {
 	if d.client == nil {
-		if err := d.soapClient(ValidationURL); err != nil {
+		if err := d.soapClient(validationURL); err != nil {
 			return nil, err
 		}
 	}
