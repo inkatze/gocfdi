@@ -13,14 +13,20 @@ go get github.com/inkatze/gocfdi
 ```go
 package main
 
-import cfdi "github.com/inkatze/gocfdi"
+import (
+	"fmt"
+
+	cfdi "github.com/inkatze/gocfdi"
+)
 
 func main() {
-	invoice := cfdi.InvoiceHeaders{
+	document := cfdi.DocumentHeaders{
 		IssuerRFC:    "LSO1306189R5",
 		AddresseeRFC: "GACJ940911ASA",
 		TotalAmount:  "4999.99",
 		InvoiceUUID:  "e7df3047-f8de-425d-b469-37abe5b4dabb",
 	}
-	cfdi.ValidateDocument(invoice)
+	result, _ := document.Validate()
+	fmt.Printf(result.RawResponse)
 }
+```
