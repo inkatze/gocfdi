@@ -1,3 +1,4 @@
+// Package cfdi contains a collection of tools to read and manage CFDI documents.
 package cfdi
 
 import (
