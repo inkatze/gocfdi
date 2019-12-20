@@ -13,6 +13,8 @@ const validationURL = "https://consultaqr.facturaelectronica.sat.gob.mx/Consulta
 const successMessage = "S - Comprobante obtenido satisfactoriamente."
 const invalidInvoice = "N - 601: La expresión impresa proporcionada no es válida."
 const invalidNotFound = "N - 602: Comprobante no encontrado"
+const validCFDIStatus = "Vigente"
+const notCancellable = "No cancelable"
 
 // DocumentHeader values used to uniquely identify CFDI documents
 type DocumentHeader struct {
@@ -22,7 +24,11 @@ type DocumentHeader struct {
 
 // ValidationResult contains the processed results from the validation response
 type ValidationResult struct {
-	RawResponse string
+	RawResponse     string
+	Response        consultaResponse
+	IsDocumentFound bool
+	IsValid         bool
+	IsCancellable   bool
 }
 
 type consultaResponse struct {
@@ -30,7 +36,7 @@ type consultaResponse struct {
 	ResponseStatus     string   `xml:"ConsultaResult>CodigoEstatus"`
 	CFDIStatus         string   `xml:"ConsultaResult>Estado"`
 	CancellationStatus string   `xml:"ConsultaResult>EstatusCancelacion"`
-	IsCancellable      string   `xml:"ConsultaResult>EsCancelable"`
+	Cancellable        string   `xml:"ConsultaResult>EsCancelable"`
 }
 
 var (
@@ -88,18 +94,32 @@ func (d *DocumentHeader) Validate() (ValidationResult, error) {
 	if err != nil {
 		return r, fmt.Errorf("Error while unmarshalling response: %w", err)
 	}
-
-	switch c.ResponseStatus {
-	case invalidInvoice:
-		return r, fmt.Errorf("The given parameters for the CFDI document are invalid: %s", c.ResponseStatus)
-	case invalidNotFound:
-		return r, fmt.Errorf("Couldn't find a CFDI document with the given parameters")
-	default:
-		if c.ResponseStatus != successMessage {
-			return r, fmt.Errorf("Unrecognized status response %s", c.ResponseStatus)
-
-		}
-	}
 	r.RawResponse = string(res.Body)
+	r.Response = c
+	r.validateResponseStatus()
+	r.validateCFDIStatus()
+	r.validateCFDIStatus()
 	return r, nil
+}
+
+func (r *ValidationResult) validateResponseStatus() {
+	r.IsDocumentFound = false
+	switch r.Response.ResponseStatus {
+	case successMessage:
+		r.IsDocumentFound = true
+	case invalidInvoice:
+		log.Debugf("The given parameters for the CFDI document are invalid: %s", c.ResponseStatus)
+	case invalidNotFound:
+		log.Debugf("Couldn't find a CFDI document with the given parameters")
+	default:
+		log.Errorf("Unrecognized status response %s", c.ResponseStatus)
+	}
+}
+
+func (r *ValidationResult) validateCFDIStatus() {
+	r.IsValid = r.Response.CFDIStatus == validCFDIStatus
+}
+
+func (r *ValidationResult) validateCancelationStatus() {
+	r.IsCancellable = r.Response.Cancellable != notCancellable
 }
