@@ -1,4 +1,4 @@
-// Package validation contains a collection of tools to read and manage CFDI documents.
+// Package validation contains checks to validate CFDIs against SAT's servers.
 package validation
 
 import (
