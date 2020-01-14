@@ -1,9 +1,10 @@
-// Package cfdi contains a collection of tools to read and manage CFDI documents.
-package cfdi
+// Package validation contains checks to validate CFDIs against SAT's servers.
+package validation
 
 import (
 	"encoding/xml"
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tiaguinho/gosoap"
@@ -16,10 +17,11 @@ const invalidNotFound = "N - 602: Comprobante no encontrado"
 const validCFDIStatus = "Vigente"
 const notCancellable = "No cancelable"
 
-// ValidationResult contains the processed results from the validation response
-type ValidationResult struct {
+// Result contains the processed results from the validation response
+type Result struct {
 	RawResponse                             string
 	IsDocumentFound, IsValid, IsCancellable bool
+	Timestamp                               int64
 }
 
 type serviceResponse struct {
@@ -37,7 +39,7 @@ type InvoiceHeader struct {
 
 // Validate checks if the document with the given parameters exists in SAT's system and is valid.
 // BUG(inkatze): The namespace is not being parsed correctly in gosoap, so we have to make two calls to fix the element's namespace
-func (i *InvoiceHeader) Validate() (*ValidationResult, error) {
+func (i *InvoiceHeader) Validate() (*Result, error) {
 	log.Debugf("Preparing validation service call")
 	soapResponse, err := i.callService()
 	if err != nil {
@@ -52,11 +54,12 @@ func (i *InvoiceHeader) Validate() (*ValidationResult, error) {
 		return nil, fmt.Errorf("Error while unmarshalling response: %w", err)
 	}
 
-	r := &ValidationResult{
+	r := &Result{
 		RawResponse:     string(soapResponse.Body),
 		IsDocumentFound: validateResponseStatus(unmarshaller.ResponseStatus),
 		IsValid:         validateCFDIStatus(unmarshaller.CFDIStatus),
 		IsCancellable:   validateCancelationStatus(unmarshaller.Cancellable),
+		Timestamp:       time.Now().Unix(),
 	}
 
 	return r, nil

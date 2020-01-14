@@ -1,4 +1,4 @@
-package cfdi
+package validation
 
 import (
 	"testing"
