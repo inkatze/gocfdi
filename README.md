@@ -20,13 +20,13 @@ import (
 )
 
 func main() {
-	document := cfdi.DocumentHeaders{
+	document := cfdi.InvoiceHeader{
 		IssuerRFC:    "LSO1306189R5",
 		AddresseeRFC: "GACJ940911ASA",
 		TotalAmount:  "4999.99",
-		InvoiceUUID:  "e7df3047-f8de-425d-b469-37abe5b4dabb",
+		UUID:  "e7df3047-f8de-425d-b469-37abe5b4dabb",
 	}
 	result, _ := document.Validate()
-	fmt.Printf(result.RawResponse)
+	fmt.Printf("%+v\n", result)
 }
 ```

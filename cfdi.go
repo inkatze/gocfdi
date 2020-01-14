@@ -16,22 +16,13 @@ const invalidNotFound = "N - 602: Comprobante no encontrado"
 const validCFDIStatus = "Vigente"
 const notCancellable = "No cancelable"
 
-// DocumentHeader values used to uniquely identify CFDI documents
-type DocumentHeader struct {
-	IssuerRFC, AddresseeRFC, TotalAmount, InvoiceUUID string
-	client                                            *gosoap.Client
-}
-
 // ValidationResult contains the processed results from the validation response
 type ValidationResult struct {
-	RawResponse     string
-	Response        consultaResponse
-	IsDocumentFound bool
-	IsValid         bool
-	IsCancellable   bool
+	RawResponse                             string
+	IsDocumentFound, IsValid, IsCancellable bool
 }
 
-type consultaResponse struct {
+type serviceResponse struct {
 	XMLName            xml.Name `xml:"ConsultaResponse"`
 	ResponseStatus     string   `xml:"ConsultaResult>CodigoEstatus"`
 	CFDIStatus         string   `xml:"ConsultaResult>Estado"`
@@ -39,87 +30,104 @@ type consultaResponse struct {
 	Cancellable        string   `xml:"ConsultaResult>EsCancelable"`
 }
 
-var (
-	c consultaResponse
-	r ValidationResult
-)
-
-func (d *DocumentHeader) soapClient(url string) error {
-	client, err := gosoap.SoapClient(url)
-	if err != nil {
-		log.Errorf("Error while creating SOAP client for url: %s", url)
-		return fmt.Errorf("Error while creating a SOAP client for %s: %w", url, err)
-	}
-	log.Debugf("SOAP client successfully created")
-	d.client = client
-	return nil
+// InvoiceHeader contains data used to validate a CFDI document.
+type InvoiceHeader struct {
+	IssuerRFC, AddresseeRFC, TotalAmount, UUID string
 }
 
-func (d *DocumentHeader) call() (*gosoap.Response, error) {
-	if d.client == nil {
-		if err := d.soapClient(validationURL); err != nil {
-			return nil, err
-		}
+// Validate checks if the document with the given parameters exists in SAT's system and is valid.
+// BUG(inkatze): The namespace is not being parsed correctly in gosoap, so we have to make two calls to fix the element's namespace
+func (i *InvoiceHeader) Validate() (*ValidationResult, error) {
+	log.Debugf("Preparing validation service call")
+	soapResponse, err := i.callService()
+	if err != nil {
+		log.Errorf("There was an error during the validation service call")
+		return nil, err
 	}
-	parsedValues := fmt.Sprintf(
+
+	log.Debugf("Parsing values from service response")
+	var unmarshaller *serviceResponse
+	err = soapResponse.Unmarshal(&unmarshaller)
+	if err := soapResponse.Unmarshal(&unmarshaller); err != nil {
+		return nil, fmt.Errorf("Error while unmarshalling response: %w", err)
+	}
+
+	r := &ValidationResult{
+		RawResponse:     string(soapResponse.Body),
+		IsDocumentFound: validateResponseStatus(unmarshaller.ResponseStatus),
+		IsValid:         validateCFDIStatus(unmarshaller.CFDIStatus),
+		IsCancellable:   validateCancelationStatus(unmarshaller.Cancellable),
+	}
+
+	return r, nil
+}
+
+func (i *InvoiceHeader) validationRequestBody() string {
+	return fmt.Sprintf(
 		"re=%s&rr=%s&tt=%s&id=%s",
-		d.IssuerRFC, d.AddresseeRFC, d.TotalAmount, d.InvoiceUUID,
+		i.IssuerRFC, i.AddresseeRFC, i.TotalAmount, i.UUID,
 	)
+}
+
+func (i *InvoiceHeader) callService() (*gosoap.Response, error) {
+	client, err := soapClient(validationURL)
+	if err != nil {
+		return nil, err
+	}
+	parsedValues := i.validationRequestBody()
 	params := gosoap.Params{"expresionImpresa": parsedValues}
 
 	// Work around a bug that uses the wrong namespace
-	res, err := d.client.Call("Consulta", params)
+	log.Debugf("Fetching results from first query")
+	res, err := client.Call("Consulta", params)
 	callError := "Error while calling SOAP action: %w"
 	if err != nil {
 		return res, fmt.Errorf(callError, err)
 	}
-	d.client.Definitions.Types[0].XsdSchema[0].TargetNamespace = "http://tempuri.org/"
+	log.Debugf("Fixing target namespace")
+	client.Definitions.Types[0].XsdSchema[0].TargetNamespace = "http://tempuri.org/"
 
 	// Actual call
-	res, err = d.client.Call("Consulta", params)
+	log.Debugf("Running query with fixed target namespace")
+	res, err = client.Call("Consulta", params)
 	if err != nil {
 		return res, fmt.Errorf(callError, err)
 	}
 	return res, nil
 }
 
-// Validate checks if the document with the given parameters exists in SAT's system and is valid.
-// BUG(inkatze): The namespace is not being parsed correctly in gosoap, so we have to make two calls to fix the element's namespace
-func (d *DocumentHeader) Validate() (ValidationResult, error) {
-	res, err := d.call()
+func soapClient(url string) (*gosoap.Client, error) {
+	log.Debugf("Creating SOAP client")
+	client, err := gosoap.SoapClient(url)
 	if err != nil {
-		// Error
+		log.Errorf("Error while creating SOAP client for url: %s", url)
+		return nil, fmt.Errorf("Error while creating a SOAP client for %s: %w", url, err)
 	}
-	err = res.Unmarshal(&c)
-	if err != nil {
-		return r, fmt.Errorf("Error while unmarshalling response: %w", err)
-	}
-	r.RawResponse = string(res.Body)
-	r.Response = c
-	r.validateResponseStatus()
-	r.validateCFDIStatus()
-	r.validateCFDIStatus()
-	return r, nil
+	log.Debugf("SOAP client successfully created")
+	return client, nil
 }
 
-func (r *ValidationResult) validateResponseStatus() {
-	r.IsDocumentFound = false
-	switch r.Response.ResponseStatus {
+func validateResponseStatus(responseStatus string) bool {
+	switch responseStatus {
 	case successMessage:
-		r.IsDocumentFound = true
+		log.Debugf("Response seems to be OK")
+		return true
 	case invalidInvoice:
-		log.Debugf("The given parameters for the CFDI document are invalid: %s", c.ResponseStatus)
+		log.Debugf("The given parameters for the CFDI document are invalid: %s", responseStatus)
 	case invalidNotFound:
 		log.Debugf("Couldn't find a CFDI document with the given parameters")
 	default:
-		log.Errorf("Unrecognized status response %s", c.ResponseStatus)
+		log.Errorf("Unrecognized status response %s", responseStatus)
 	}
+	return false
 }
 
-func (r *ValidationResult) validateCFDIStatus() {
-	r.IsValid = r.Response.CFDIStatus == validCFDIStatus
+func validateCFDIStatus(cfdiStatus string) bool {
+	log.Debugf("Validating CFDI status")
+	return cfdiStatus == validCFDIStatus
 }
 
-func (r *ValidationResult) validateCancelationStatus() {
-	r.IsCancellable = r.Response.Cancellable != notCancellable
+func validateCancelationStatus(cancellable string) bool {
+	log.Debugf("Validating cancellation status")
+	return cancellable != notCancellable
 }
