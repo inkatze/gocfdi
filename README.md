@@ -16,17 +16,21 @@ package main
 import (
 	"fmt"
 
-	"github.com/inkatze/gocfdi"
+	"github.com/inkatze/gocfdi/validation"
 )
 
 func main() {
-	document := cfdi.InvoiceHeader{
+	document := validation.InvoiceHeader{
 		IssuerRFC:    "LSO1306189R5",
 		AddresseeRFC: "GACJ940911ASA",
 		TotalAmount:  "4999.99",
-		UUID:  "e7df3047-f8de-425d-b469-37abe5b4dabb",
+		UUID:         "e7df3047-f8de-425d-b469-37abe5b4dabb",
 	}
-	result, _ := document.Validate()
-	fmt.Printf("%+v\n", result)
+	result, err := document.Validate()
+	if err != nil {
+		fmt.Printf("Error while trying to validate the document")
+		return
+	}
+	fmt.Printf("Validation results: %+v\n", *result)
 }
 ```
