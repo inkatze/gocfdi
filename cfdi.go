@@ -4,6 +4,7 @@ package cfdi
 import (
 	"encoding/xml"
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tiaguinho/gosoap"
@@ -20,6 +21,7 @@ const notCancellable = "No cancelable"
 type ValidationResult struct {
 	RawResponse                             string
 	IsDocumentFound, IsValid, IsCancellable bool
+	Timestamp                               int64
 }
 
 type serviceResponse struct {
@@ -57,6 +59,7 @@ func (i *InvoiceHeader) Validate() (*ValidationResult, error) {
 		IsDocumentFound: validateResponseStatus(unmarshaller.ResponseStatus),
 		IsValid:         validateCFDIStatus(unmarshaller.CFDIStatus),
 		IsCancellable:   validateCancelationStatus(unmarshaller.Cancellable),
+		Timestamp:       time.Now().Unix(),
 	}
 
 	return r, nil
